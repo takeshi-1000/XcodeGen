@@ -3,6 +3,7 @@ import PathKit
 import ProjectSpec
 import XcodeProj
 import XcodeGenCore
+import SwiftCLI
 
 struct SourceFile {
     let path: Path
@@ -415,6 +416,28 @@ class SourceGenerator {
     }
 
     /// creates all the source files and groups they belong to for a given targetSource
+    
+    /*
+     groupの中に下記がある。
+     - source
+     - groups
+     
+     例えば下記のような関係性
+     - Test1(Group/PBXGroup)
+     - Test2(Group/PBXGroup)
+     - Test3(Group/PBXGroup)
+     - hoge.lproj(Group/PBXVarientGroup)
+     - Tes1.swift(source/FileReference)
+     - Tes2.swift(source/FileReference))
+     - Tes3.swift(source/FileReference))
+     - Tes4.swift(source/FileReference))
+     それが戻り値として -> (sourceFiles: [SourceFile], groups: [PBXGroup]) の形で表されている。
+     
+     下記3種類
+     // 普通のグループ(.lprojがついてない)
+     // 普通のグループ(.lprojがついている)
+     // ファイル
+     */
     private func getGroupSources(
         targetType: PBXProductType,
         targetSource: TargetSource,
@@ -426,11 +449,57 @@ class SourceGenerator {
         buildPhases: [Path: BuildPhaseSpec]
     ) throws -> (sourceFiles: [SourceFile], groups: [PBXGroup]) {
 
-        let children = try getSourceChildren(targetSource: targetSource, dirPath: path, excludePaths: excludePaths, includePaths: includePaths)
+        // fileもディレクトリ(group)も含んだもの
+        /*
+         F8862F1E27EFE24E00EC8E14 /* App */ = {
+             isa = PBXGroup;
+             children = (
+                 F8862F1F27EFE24E00EC8E14 /* AppDelegate.swift */,
+                 F8862F2127EFE24E00EC8E14 /* SceneDelegate.swift */,
+                 F885EB5227F03A9900029CDF /* SupportingFile */,
+                 F8862F7B27EFF44500EC8E14 /* Resource */,
+                 F8862F6C27EFF28A00EC8E14 /* Interface */,
+                 F8862F5827EFE56B00EC8E14 /* Coordinator */,
+                 F8862F5F27EFF10D00EC8E14 /* Domain */,
+                 F8862F6227EFF13500EC8E14 /* ServiceClient */,
+                 F8862F6227EFF13500EC8E14 /* Hoge.lproj */,
+             );
+             path = App;
+             sourceTree = "<group>";
+         };
+         */
+        let children: [Path] = try getSourceChildren(targetSource: targetSource, dirPath: path, excludePaths: excludePaths, includePaths: includePaths)
 
-        let createIntermediateGroups = targetSource.createIntermediateGroups ?? project.options.createIntermediateGroups
+        let createIntermediateGroups: Bool = targetSource.createIntermediateGroups ?? project.options.createIntermediateGroups
+                
+        // MARK: - not localized
+        
         let nonLocalizedChildren = children.filter { $0.extension != "lproj" }
 
+        /*
+         ディレクトリと、ファイルを分解
+         */
+        
+        /*
+         上の例でいくと下記のfilePathsは
+         F8862F1E27EFE24E00EC8E14 /* App */ = {
+             isa = PBXGroup;
+             children = (
+                 F8862F1F27EFE24E00EC8E14 /* AppDelegate.swift */,
+                 F8862F2127EFE24E00EC8E14 /* SceneDelegate.swift */,
+                 ⭕️F885EB5227F03A9900029CDF /* SupportingFile */,
+                 ⭕️F8862F7B27EFF44500EC8E14 /* Resource */,
+                 ⭕️F8862F6C27EFF28A00EC8E14 /* Interface */,
+                 ⭕️F8862F5827EFE56B00EC8E14 /* Coordinator */,
+                 ⭕️F8862F5F27EFF10D00EC8E14 /* Domain */,
+                 ⭕️F8862F6227EFF13500EC8E14 /* ServiceClient */,
+                 F8862F6227EFF13500EC8E14 /* Hoge.lproj */,
+             );
+             path = App;
+             sourceTree = "<group>";
+         };
+         */
+        
         let directories = nonLocalizedChildren
             .filter {
                 if let fileType = getFileType(path: $0) {
@@ -440,6 +509,25 @@ class SourceGenerator {
                 }
             }
 
+        /*
+         上の例でいくと下記のfilePathsは
+         F8862F1E27EFE24E00EC8E14 /* App */ = {
+             isa = PBXGroup;
+             children = (
+                 ⭕️F8862F1F27EFE24E00EC8E14 /* AppDelegate.swift */,
+                 ⭕️F8862F2127EFE24E00EC8E14 /* SceneDelegate.swift */,
+                 F885EB5227F03A9900029CDF /* SupportingFile */,
+                 F8862F7B27EFF44500EC8E14 /* Resource */,
+                 F8862F6C27EFF28A00EC8E14 /* Interface */,
+                 F8862F5827EFE56B00EC8E14 /* Coordinator */,
+                 F8862F5F27EFF10D00EC8E14 /* Domain */,
+                 F8862F6227EFF13500EC8E14 /* ServiceClient */,
+                 F8862F6227EFF13500EC8E14 /* Hoge.lproj */,
+             );
+             path = App;
+             sourceTree = "<group>";
+         };
+         */
         let filePaths = nonLocalizedChildren
             .filter {
                 if let fileType = getFileType(path: $0) {
@@ -448,18 +536,36 @@ class SourceGenerator {
                     return $0.isFile || $0.isDirectory && Xcode.isDirectoryFileWrapper(path: $0)
                 }
             }
-
-        let localisedDirectories = children
-            .filter { $0.extension == "lproj" }
-
+        // fileReferenceをgroupChildrenに持っておく
+        // ⭕️F8862F1F27EFE24E00EC8E14 /* AppDelegate.swift */,
+        // ⭕️F8862F2127EFE24E00EC8E14 /* SceneDelegate.swift */,
         var groupChildren: [PBXFileElement] = filePaths.map { getFileReference(path: $0, inPath: path) }
+        
+        // sourceFileも作成しておく
+        // sourceFileはPBXBuildFile(pbxprojでいうと下記)で必要になりそう
+        /*
+         Begin PBXBuildFile section
+         ...
+         F8862F2027EFE24E00EC8E14 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8862F1F27EFE24E00EC8E14 /* AppDelegate.swift */; };
+         F8862F2227EFE24E00EC8E14 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8862F2127EFE24E00EC8E14 /* SceneDelegate.swift */; };
+         */
         var allSourceFiles: [SourceFile] = filePaths.map {
             generateSourceFile(targetType: targetType, targetSource: targetSource, path: $0, buildPhases: buildPhases)
         }
+        
         var groups: [PBXGroup] = []
 
+        // fileでないディレクトリをfor文で回す
         for path in directories {
-
+            /*
+             下記あたりがinputとして入れられる
+             ⭕️F885EB5227F03A9900029CDF /* SupportingFile */,
+             ⭕️F8862F7B27EFF44500EC8E14 /* Resource */,
+             ⭕️F8862F6C27EFF28A00EC8E14 /* Interface */,
+             ⭕️F8862F5827EFE56B00EC8E14 /* Coordinator */,
+             ⭕️F8862F5F27EFF10D00EC8E14 /* Domain */,
+             ⭕️F8862F6227EFF13500EC8E14 /* ServiceClient */,
+             */
             let subGroups = try getGroupSources(
                 targetType: targetType,
                 targetSource: targetSource,
@@ -475,17 +581,96 @@ class SourceGenerator {
                 continue
             }
 
+            // このメソッドで受け取ったpathのその下のsourceFilesを、allSourceFilesに入れる
+            /*
+             このメソッドで受け取ったpath: Test1
+             その下のfile: test1.swift, test2.swift test3.swift
+             - Test1/test1.swift
+             - Test1/test2.swift
+             - Test1/test3.swift
+             */
             allSourceFiles += subGroups.sourceFiles
 
             if let firstGroup = subGroups.groups.first {
+                /*
+                 groupChildrenにはまだファイルしか入ってないが
+                 - Tes1.swift(source/FileReference)
+                 - Tes2.swift(source/FileReference))
+                 
+                 subGroups = try getGroupSources で取得したsubGroups.groups.first に、
+                下記の、ものに相当するfileReferenceがあるので、groupChildrenに追加していると思われる
+                 - Test1(Group/PBXGroup)
+                 - Test2(Group/PBXGroup)
+                 - Test3(Group/PBXGroup)
+                 
+                PBXGroupはchilrenを持ち、fileとpbxgroupそのものを持つ必要がある。
+                 groupchildren変数にfileRefrenceを突っ込むようなので、それに相当するfirstGroupを入れる
+                 */
                 groupChildren.append(firstGroup)
+                
+                /*
+                 ここのsubGroups.groupsにあるものは、path直下に限らず、path以降の全てのGroupみたいだということ
+                 例えば下記のような構造があって、MiwaLibを現在pathとして受け取っていた場合、
+                 ⭕️の他に、🙆‍♂️もsubgroupsとして受け取れる
+                 /MiwaLib⭕️
+                 ├── AssetDbManager.swift
+                 ├── MiwaRobot.swift
+                 ├── Utils.swift
+                 ├── ble⭕️
+                 │   ├── BleCentral.swift
+                 │   ├── hoge1🙆‍♂️
+                 │   │    ├── hoge1.swift
+                 │   ├── hoge2🙆‍♂️
+                 │   │    ├── hoge2.swift
+                 ├── command⭕️
+                 │   ├── ComTask.swift
+                 │   ├── DeviceCertificationTask.swift
+                 │   ├── RegisterAdminTask.swift
+                 │   └── TestTask.swift
+                 ├── data⭕️
+                 │   └── miwa.realm
+                 ├── model⭕️
+                 │   ├── BleGattData.swift
+                 └── operation⭕️
+                 ├── Queue.swift
+                 ├── SimpleOperation.swift
+                 └── Threads.swift
+                 */
                 groups += subGroups.groups
             } else if project.options.generateEmptyDirectories {
                 groups += subGroups.groups
             }
         }
+        
+        // MARK: - localized
+        
+        /*
+         上の例でいくと下記のfilePathsは
+         F8862F1E27EFE24E00EC8E14 /* App */ = {
+             isa = PBXGroup;
+             children = (
+                 F8862F1F27EFE24E00EC8E14 /* AppDelegate.swift */,
+                 F8862F2127EFE24E00EC8E14 /* SceneDelegate.swift */,
+                 F885EB5227F03A9900029CDF /* SupportingFile */,
+                 F8862F7B27EFF44500EC8E14 /* Resource */,
+                 F8862F6C27EFF28A00EC8E14 /* Interface */,
+                 F8862F5827EFE56B00EC8E14 /* Coordinator */,
+                 F8862F5F27EFF10D00EC8E14 /* Domain */,
+                 F8862F6227EFF13500EC8E14 /* ServiceClient */,
+                 ⭕️F8862F6227EFF13500EC8E14 /* Hoge.lproj */,
+             );
+             path = App;
+             sourceTree = "<group>";
+         };
+         */
+        let localisedDirectories = children
+            .filter { $0.extension == "lproj" }
 
         // find the base localised directory
+        
+        /*
+         baseのローカライズファイルが、一つにしかない前提となっている
+         */
         let baseLocalisedDirectory: Path? = {
             func findLocalisedDirectory(by languageId: String) -> Path? {
                 localisedDirectories.first { $0.lastComponent == "\(languageId).lproj" }
@@ -499,12 +684,22 @@ class SourceGenerator {
         // create variant groups of the base localisation first
         var baseLocalisationVariantGroups: [PBXVariantGroup] = []
 
+        /*
+         Base.lproj内を探索し、下記を行いそう
+         1. varientGroupの作成
+         2. Base.lproj内のファイルのみ、sourceFileを作成
+         */
         if let baseLocalisedDirectory = baseLocalisedDirectory {
             let filePaths = try baseLocalisedDirectory.children()
                 .filter { self.isIncludedPath($0, excludePaths: excludePaths, includePaths: includePaths) }
                 .sorted()
             for filePath in filePaths {
                 let variantGroup = getVariantGroup(path: filePath, inPath: path)
+                // fileRefrenceを追加
+                
+                /*
+                 variantGroupもfileReferenceになるので、groupChildrenに追加
+                 */
                 groupChildren.append(variantGroup)
                 baseLocalisationVariantGroups.append(variantGroup)
 
@@ -518,6 +713,12 @@ class SourceGenerator {
         }
 
         // add references to localised resources into base localisation variant groups
+        
+        /*
+         Base.lproj以外の`{language-id}.lproj`ディレクトリも含んで探索していく
+         1. baseLocalisationVariantGroupsから予め追加されたvarientGroupと、for文で回しているnameが一緒のものを抽出
+         2.
+         */
         for localisedDirectory in localisedDirectories {
             let localisationName = localisedDirectory.lastComponentWithoutExtension
             let filePaths = try localisedDirectory.children()
@@ -529,7 +730,6 @@ class SourceGenerator {
                 let variantGroup = baseLocalisationVariantGroups
                     .first {
                         Path($0.name!).lastComponent == filePath.lastComponent
-
                     } ?? baseLocalisationVariantGroups.first {
                         Path($0.name!).lastComponentWithoutExtension == filePath.lastComponentWithoutExtension
                     }
@@ -545,7 +745,13 @@ class SourceGenerator {
                         variantGroup.children.append(fileReference)
                     }
                 } else {
-                    // add SourceFile to group if there is no Base.lproj directory
+                    /*
+                     base.lprojにないものだと、
+                     とりあえず、ソースファイルを作成して、groupChildrenに突っ込んでおこう
+                     というロジックになっている。
+                     なので、AkerunDoorListLocalizable.stringsが、base.lprojに格納されていないので
+                     結果ここのロジックを通る感じになっている。
+                     */
                     let sourceFile = generateSourceFile(targetType: targetType,
                                                         targetSource: targetSource,
                                                         path: filePath,
@@ -556,7 +762,9 @@ class SourceGenerator {
                 }
             }
         }
-
+        
+        // MARK: - group 作成
+        
         let group = getGroup(
             path: path,
             mergingChildren: groupChildren,
@@ -567,7 +775,36 @@ class SourceGenerator {
         if createIntermediateGroups {
             createIntermediaGroups(for: group, at: path)
         }
+        
+        /*
+         groupsの中には、groupが乱立していると思われるが
+         0番目が受け取ったpathに等しいgroup
+         
+         例えば下記のようなFugaまでのpathを取った場合、
+         /Akerun/Test/Hoge/Fuga
+         
+         Fugaがすぐ上のgroupにあたるもので、
+         Fuga以下の下記のようなgroupは
+         /Akerun/Test/Hoge/Fuga/HogeMaru/...
+         /Akerun/Test/Hoge/Fuga/HogeMaru2/...
+         /Akerun/Test/Hoge/Fuga/HogeMaru3/...
+         
+         もう少し上の方にある下記の処理がそれに相当すると思われる。
+         for path in directories {
 
+             let subGroups = try getGroupSources(
+                 targetType: targetType,
+                 targetSource: targetSource,
+                 path: path,
+                 isBaseGroup: false,
+                 hasCustomParent: false,
+                 excludePaths: excludePaths,
+                 includePaths: includePaths,
+                 buildPhases: buildPhases
+             )
+         
+         
+         */
         groups.insert(group, at: 0)
         return (allSourceFiles, groups)
     }
