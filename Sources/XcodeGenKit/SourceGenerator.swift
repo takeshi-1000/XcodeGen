@@ -18,7 +18,7 @@ class SourceGenerator {
     private let projectDirectory: Path?
     private var fileReferencesByPath: [String: PBXFileElement] = [:]
     private var groupsByPath: [Path: PBXGroup] = [:]
-    private var variantGroupsByPath: [Path: PBXVariantGroup] = [:]
+    private var tmpVariantGroups: [PBXVariantGroup] = []
     private var localPackageGroup: PBXGroup?
 
     private let project: Project
@@ -340,9 +340,13 @@ class SourceGenerator {
     }
 
     /// Creates a variant group or returns an existing one at the path
-    private func getVariantGroup(path: Path, inPath: Path) -> PBXVariantGroup {
+    // TODO: nameに変えたい
+    private func getVariantGroup(path: Path) -> PBXVariantGroup {
+        
+//        Term.stdout.print("@@@ getVariantGroup :: \(path)")
+        
         let variantGroup: PBXVariantGroup
-        if let cachedGroup = variantGroupsByPath[path] {
+        if let cachedGroup = tmpVariantGroups.first(where: { $0.name == path.lastComponent }) {
             variantGroup = cachedGroup
         } else {
             let group = PBXVariantGroup(
@@ -350,7 +354,7 @@ class SourceGenerator {
                 name: path.lastComponent
             )
             variantGroup = addObject(group)
-            variantGroupsByPath[path] = variantGroup
+            tmpVariantGroups.append(variantGroup)
         }
         return variantGroup
     }
@@ -644,6 +648,84 @@ class SourceGenerator {
         
         // MARK: - localized
         
+        // MARK: - localized 新規
+        
+        /*
+         やること
+         1. localized file の実態を作成（PBXBuildFile）
+         2. PBXVarientGroupの作成
+         3. PBXGroupの作成 or ChildrenにAppend, PBXSourceBuildPhase用のPBXBuildFileの作成
+         4. 上記の、 "PBXSourceBuildPhase用のPBXBuildFile" をもとに、PBXSourceBuildPhaseを作成orFilesにAppend
+         （多分やらなくて良い）5. PBXNativeTarget
+         */
+        
+        // 対象のローカライズディレクトリの確認
+        /*
+         Base.lproj
+         - Akerun.strings(1)
+          -> enとjaの探索始める
+          -> 見つけたFile全てを作成して、そのファイルをもとにPBXVarientGroup作成
+          -> PBXVarientGroupからPBXSourceBuildPhaseに紐付けるPBXBuildFileを作成する
+          -> それをBuildPhaseに追加
+         - Akerun2.strings(2) -> enとjaの探索始める
+         - Akerun3.strings(3) -> enとjaの探索始める
+         
+         en.lproj
+         - Akerun.strings (4) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
+         - Akerun2.strings (5) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
+         - Akerun3.strings (4) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
+         ja.lproj
+         - Akerun.strings
+         - Akerun2.strings
+         - Akerun3.strings
+         
+         ==
+         
+         
+         
+         */
+            
+        let newLocalisedDirectories = children
+            .filter { $0.extension == "lproj" }
+        
+        do {
+            try newLocalisedDirectories.forEach { localizedDir in
+                                
+                try localizedDir.children()
+                    .filter { self.isIncludedPath($0, excludePaths: excludePaths, includePaths: includePaths) }
+                    .sorted()
+                    .forEach { localizedDirChildPath in
+
+                        let variantGroup = getVariantGroup(path: localizedDirChildPath)
+
+                        if groupChildren.contains(where: { $0.name == variantGroup.name }) == false {
+                            groupChildren.append(variantGroup)
+                        }
+
+                        let sourceFile = generateSourceFile(targetType: targetType,
+                                                            targetSource: targetSource,
+                                                            path: localizedDirChildPath,
+                                                            fileReference: variantGroup,
+                                                            buildPhases: buildPhases)
+                        allSourceFiles.append(sourceFile)
+                        
+                        let fileReference = getFileReference(
+                            path: localizedDirChildPath,
+                            inPath: path,
+                            name: localizedDir.lastComponentWithoutExtension
+                        )
+                                                
+                        variantGroup.children.append(fileReference)
+                    }
+            }
+        } catch {
+            
+        }
+                
+        knownRegions.formUnion(newLocalisedDirectories.map { $0.lastComponentWithoutExtension })
+        
+        /*
+        // MARK: - localized 既存
         /*
          上の例でいくと下記のfilePathsは
          F8862F1E27EFE24E00EC8E14 /* App */ = {
@@ -694,7 +776,7 @@ class SourceGenerator {
                 .filter { self.isIncludedPath($0, excludePaths: excludePaths, includePaths: includePaths) }
                 .sorted()
             for filePath in filePaths {
-                let variantGroup = getVariantGroup(path: filePath, inPath: path)
+                let variantGroup = getVariantGroup(path: filePath)
                 // fileRefrenceを追加
                 
                 /*
@@ -762,6 +844,7 @@ class SourceGenerator {
                 }
             }
         }
+        */
         
         // MARK: - group 作成
         
@@ -847,6 +930,7 @@ class SourceGenerator {
             sourceFiles.append(sourceFile)
             sourceReference = fileReference
         case .file:
+            
             let parentPath = path.parent()
             let fileReference = getFileReference(path: path, inPath: parentPath, name: targetSource.name)
 
