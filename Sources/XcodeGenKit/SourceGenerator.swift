@@ -342,11 +342,8 @@ class SourceGenerator {
     /// Creates a variant group or returns an existing one at the path
     // TODO: nameに変えたい
     private func getVariantGroup(path: Path) -> PBXVariantGroup {
-        
-//        Term.stdout.print("@@@ getVariantGroup :: \(path)")
-        
         let variantGroup: PBXVariantGroup
-        if let cachedGroup = tmpVariantGroups.first(where: { $0.name == path.lastComponent }) {
+        if let cachedGroup = tmpVariantGroups.first(where: { $0.name!.split(separator: ".").first! == path.lastComponentWithoutExtension }) {
             variantGroup = cachedGroup
         } else {
             let group = PBXVariantGroup(
@@ -695,13 +692,10 @@ class SourceGenerator {
                     .filter { self.isIncludedPath($0, excludePaths: excludePaths, includePaths: includePaths) }
                     .sorted()
                     .forEach { localizedDirChildPath in
-
+                        
                         let variantGroup = getVariantGroup(path: localizedDirChildPath)
-
-                        if groupChildren.contains(where: { $0.name == variantGroup.name }) == false {
-                            groupChildren.append(variantGroup)
-                        }
-
+                        groupChildren.append(variantGroup)
+                        
                         let sourceFile = generateSourceFile(targetType: targetType,
                                                             targetSource: targetSource,
                                                             path: localizedDirChildPath,
@@ -714,7 +708,7 @@ class SourceGenerator {
                             inPath: path,
                             name: localizedDir.lastComponentWithoutExtension
                         )
-                                                
+                        
                         variantGroup.children.append(fileReference)
                     }
             }
