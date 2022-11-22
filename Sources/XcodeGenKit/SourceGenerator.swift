@@ -344,14 +344,23 @@ class SourceGenerator {
     private func getVariantGroup(path: Path) -> PBXVariantGroup {
         let variantGroup: PBXVariantGroup
         if let cachedGroup = tmpVariantGroups.first(where: { $0.name!.split(separator: ".").first! == path.lastComponentWithoutExtension }) {
+            if NSString(string: path.components.last ?? "").pathExtension != "strings" {
+//                print("@@@ test :: \(path.components.last)")
+                cachedGroup.name = path.components.last
+            }
             variantGroup = cachedGroup
         } else {
+            
+//            Term.stdout.print("@@@ path :: \(path.path)")
+            
             let group = PBXVariantGroup(
                 sourceTree: .group,
                 name: path.lastComponent
             )
             variantGroup = addObject(group)
             tmpVariantGroups.append(variantGroup)
+//            tmpVariantGroups.append(group)
+//            return group
         }
         return variantGroup
     }
@@ -482,7 +491,7 @@ class SourceGenerator {
          */
         
         /*
-         上の例でいくと下記のfilePathsは
+         上の例でいくと下記のdirectoriesは
          F8862F1E27EFE24E00EC8E14 /* App */ = {
              isa = PBXGroup;
              children = (
@@ -687,21 +696,28 @@ class SourceGenerator {
         
         do {
             try newLocalisedDirectories.forEach { localizedDir in
-                                
+                                                
                 try localizedDir.children()
                     .filter { self.isIncludedPath($0, excludePaths: excludePaths, includePaths: includePaths) }
                     .sorted()
                     .forEach { localizedDirChildPath in
                         
                         let variantGroup = getVariantGroup(path: localizedDirChildPath)
-                        groupChildren.append(variantGroup)
+                        // 暫定。このようにすべき理由をメモしたい。
                         
-                        let sourceFile = generateSourceFile(targetType: targetType,
-                                                            targetSource: targetSource,
-                                                            path: localizedDirChildPath,
-                                                            fileReference: variantGroup,
-                                                            buildPhases: buildPhases)
-                        allSourceFiles.append(sourceFile)
+                        // groupChilrednのうち、
+                        let filteredGroupChildren = groupChildren.filter {
+                            $0.name?.contains(".strings") ?? false ||
+                            $0.name?.contains(".intentdefinition") ?? false ||
+                            $0.name?.contains(".storyboard") ?? false
+                        }
+                        
+                        if filteredGroupChildren.first(where: { ($0.name?.components(separatedBy: ".").first ?? "") == variantGroup.name!.components(separatedBy: ".").first! }) == nil {
+                            // 上記を満たしていれば、groupChildrenになさそうなので追加
+                            
+                            // varientGroupに追加するのは1度のみ
+                            groupChildren.append(variantGroup)
+                        }
                         
                         let fileReference = getFileReference(
                             path: localizedDirChildPath,
@@ -710,6 +726,30 @@ class SourceGenerator {
                         )
                         
                         variantGroup.children.append(fileReference)
+                    
+                        // sourceFileはPBXBuildFileのことで、resource / source / .. など種類がある。
+                        if allSourceFiles.filter({ $0.buildFile.file?.name == localizedDirChildPath.lastComponent }).first == nil {
+                                                        
+                            let sourceFile = generateSourceFile(targetType: targetType,
+                                                                targetSource: targetSource,
+                                                                path: localizedDirChildPath,
+                                                                fileReference: variantGroup,
+                                                                buildPhases: buildPhases)
+                            allSourceFiles.append(sourceFile)
+                        } else {
+                            if localizedDirChildPath.lastComponent.contains(".intentdefinition") {
+//                                Term.stdout.print("@@@ 通過")
+                                allSourceFiles.removeAll { $0.buildFile.file?.name == localizedDirChildPath.lastComponent }
+                                
+                                let sourceFile = generateSourceFile(targetType: targetType,
+                                                                    targetSource: targetSource,
+                                                                    path: localizedDirChildPath,
+                                                                    fileReference: variantGroup,
+                                                                    buildPhases: buildPhases)
+                                allSourceFiles.append(sourceFile)
+                            }
+                        }
+                        
                     }
             }
         } catch {
@@ -763,7 +803,7 @@ class SourceGenerator {
         /*
          Base.lproj内を探索し、下記を行いそう
          1. varientGroupの作成
-         2. Base.lproj内のファイルのみ、sourceFileを作成
+         2. Base.lproj内のファイルのみ、sourceFileを作成（このお陰で、intentdefinitionのsourceBuildFileが生成される。）
          */
         if let baseLocalisedDirectory = baseLocalisedDirectory {
             let filePaths = try baseLocalisedDirectory.children()
@@ -974,6 +1014,33 @@ class SourceGenerator {
 
             sourceFiles += groupSourceFiles
             sourceReference = group
+            
+        case .varientGroup:
+//            Term.stdout.print("@@@ test 通過")
+//            // varientGroupが既に存在する場合
+//            Term.stdout.print("@@@ test path.lastComponentWithoutExtension :: \(path.lastComponent)")
+//            Term.stdout.print("@@@ test tmpVariantGroups.count :: \(tmpVariantGroups.count)")
+//            tmpVariantGroups.forEach { test in
+//                Term.stdout.print("@@@ varient :: \(test.name)")
+//            }
+//
+            if let test = tmpVariantGroups.filter({ $0.name!.contains(path.lastComponentWithoutExtension) }).first {
+                
+//                Term.stdout.print("@@@ test varient name :: \(test.name)")
+                
+                let sourceFile = generateSourceFile(targetType: targetType,
+                                                    targetSource: targetSource,
+                                                    path: path,
+                                                    fileReference: test,
+                                                    buildPhases: buildPhases)
+                sourceFiles.append(sourceFile)
+                sourceReference = getFileReference(path: path,
+                                                   inPath: path,
+                                                   name: targetSource.name)
+            } else {
+                // varientGroupが存在しない場合
+                sourceReference = .init()
+            }
         }
 
         if hasCustomParent {
@@ -990,7 +1057,11 @@ class SourceGenerator {
     ///
     /// While `TargetSource` declares `type`, its optional and in the event that the value is not defined then we must resolve a sensible default based on the path of the source.
     private func resolvedTargetSourceType(for targetSource: TargetSource, at path: Path) -> SourceType {
-        return targetSource.type ?? (path.isFile || path.extension != nil ? .file : .group)
+        if targetSource.localizedGroup || targetSource.path.contains("lproj") {
+            return .varientGroup
+        } else {
+            return targetSource.type ?? (path.isFile || path.extension != nil ? .file : .group)
+        }
     }
 
     private func createParentGroups(_ parentGroups: [String], for fileElement: PBXFileElement) {

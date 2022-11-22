@@ -18,12 +18,13 @@ public struct TargetSource: Equatable {
     public var createIntermediateGroups: Bool?
     public var attributes: [String]
     public var resourceTags: [String]
+    public var localizedGroup: Bool
 
     public enum HeaderVisibility: String {
         case `public`
         case `private`
         case project
-
+        
         public var settingName: String {
             switch self {
             case .public: return "Public"
@@ -46,7 +47,8 @@ public struct TargetSource: Equatable {
         headerVisibility: HeaderVisibility? = nil,
         createIntermediateGroups: Bool? = nil,
         attributes: [String] = [],
-        resourceTags: [String] = []
+        resourceTags: [String] = [],
+        localizedGroup: Bool = false
     ) {
         self.path = path
         self.name = name
@@ -61,6 +63,7 @@ public struct TargetSource: Equatable {
         self.createIntermediateGroups = createIntermediateGroups
         self.attributes = attributes
         self.resourceTags = resourceTags
+        self.localizedGroup = localizedGroup
     }
 }
 
@@ -106,6 +109,7 @@ extension TargetSource: JSONObjectConvertible {
         createIntermediateGroups = jsonDictionary.json(atKeyPath: "createIntermediateGroups")
         attributes = jsonDictionary.json(atKeyPath: "attributes") ?? []
         resourceTags = jsonDictionary.json(atKeyPath: "resourceTags") ?? []
+        localizedGroup = jsonDictionary.json(atKeyPath: "localizedGroup") ?? false
     }
 }
 
@@ -123,6 +127,7 @@ extension TargetSource: JSONEncodable {
             "createIntermediateGroups": createIntermediateGroups,
             "resourceTags": resourceTags,
             "path": path,
+            "localizedGroup" : localizedGroup
         ]
 
         if optional != TargetSource.optionalDefault {

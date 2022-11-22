@@ -9,6 +9,7 @@ import Foundation
 
 public enum SourceType: String {
     case group
+    case varientGroup
     case file
     case folder
 }

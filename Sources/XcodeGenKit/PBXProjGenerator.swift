@@ -4,6 +4,7 @@ import ProjectSpec
 import XcodeProj
 import Yams
 import Version
+import SwiftCLI
 
 public class PBXProjGenerator {
 
@@ -654,8 +655,16 @@ public class PBXProjGenerator {
         let infoPlistFiles: [Config: String] = getInfoPlists(for: target)
         let sourceFileBuildPhaseOverrideSequence: [(Path, BuildPhaseSpec)] = Set(infoPlistFiles.values).map({ (project.basePath + $0, .none) })
         let sourceFileBuildPhaseOverrides = Dictionary(uniqueKeysWithValues: sourceFileBuildPhaseOverrideSequence)
+        // ここ
         let sourceFiles = try sourceGenerator.getAllSourceFiles(targetType: target.type, sources: target.sources, buildPhases: sourceFileBuildPhaseOverrides)
             .sorted { $0.path.lastComponent < $1.path.lastComponent }
+        
+        if target.name == "Akerun" {
+//            Term.stdout.print("@@@ target.name :: \(target.name)")
+//            print("@@@ hoge :: \(sourceFiles.filter { $0.buildFile.file?.name == "AkerunDoorListLocalizable.strings" }.count)")
+        }
+        
+//        Term.stdout.print("@@@ sourceFiles.count :: \(sourceFiles.count)")
 
         var anyDependencyRequiresObjCLinking = false
 
@@ -1096,6 +1105,12 @@ public class PBXProjGenerator {
         if !resourcesBuildPhaseFiles.isEmpty {
             let resourcesBuildPhase = addObject(PBXResourcesBuildPhase(files: resourcesBuildPhaseFiles))
             buildPhases.append(resourcesBuildPhase)
+            
+            //
+            
+            if target.name == "Akerun" {
+//                print("@@@ hogehoge \(resourcesBuildPhaseFiles.filter { $0.file?.name == "AkerunDoorListLocalizable.strings" }.count )")
+            }
         }
 
         let swiftObjCInterfaceHeader = project.getCombinedBuildSetting("SWIFT_OBJC_INTERFACE_HEADER_NAME", target: target, config: project.configs[0]) as? String
@@ -1390,6 +1405,10 @@ public class PBXProjGenerator {
         if !target.isLegacy {
             targetObject.productType = target.type
         }
+        
+//        if target.name == "Akerun" {
+//            print("@@@ hoge2 :: \(sourceFiles.filter { $0.buildFile.file?.name == "AkerunDoorListLocalizable.strings" }.count)")
+//        }
     }
     
     private func makePlatformFilter(for filter: Dependency.PlatformFilter) -> String? {
