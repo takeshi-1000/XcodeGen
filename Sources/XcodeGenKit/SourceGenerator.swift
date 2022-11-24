@@ -7,9 +7,9 @@ import SwiftCLI
 
 struct SourceFile {
     let path: Path
-    let fileReference: PBXFileElement
-    let buildFile: PBXBuildFile
-    let buildPhase: BuildPhaseSpec?
+    let fileReference: PBXFileElement // pbxFileRef or pbxVarientGroup
+    let buildFile: PBXBuildFile // 
+    let buildPhase: BuildPhaseSpec? // .resourcesとか、.sourcesとか
 }
 
 class SourceGenerator {
@@ -94,8 +94,11 @@ class SourceGenerator {
     ///   - targetType: The type of target that the source files should belong to.
     ///   - sources: The array of sources defined as part of the targets spec.
     ///   - buildPhases: A dictionary containing any build phases that should be applied to source files at specific paths in the event that the associated `TargetSource` didn't already define a `buildPhase`. Values from this dictionary are used in cases where the project generator knows more about a file than the spec/filesystem does (i.e if the file should be treated as the targets Info.plist and so on).
+    ///
+    // ここにvarientGroup, ~~fileReference~~ の全量を追加
     func getAllSourceFiles(targetType: PBXProductType, sources: [TargetSource], buildPhases: [Path : BuildPhaseSpec]) throws -> [SourceFile] {
-        try sources.flatMap { try getSourceFiles(targetType: targetType, targetSource: $0, buildPhases: buildPhases) }
+        
+        return try sources.flatMap { try getSourceFiles(targetType: targetType, targetSource: $0, buildPhases: buildPhases) }
     }
 
     // get groups without build files. Use for Project.fileGroups
@@ -357,6 +360,7 @@ class SourceGenerator {
                 sourceTree: .group,
                 name: path.lastComponent
             )
+            // pbxVarientGroupGeneratorに必要
             variantGroup = addObject(group)
             tmpVariantGroups.append(variantGroup)
 //            tmpVariantGroups.append(group)
@@ -657,6 +661,14 @@ class SourceGenerator {
         // MARK: - localized 新規
         
         /*
+         11/23 追記
+         やること
+         ・PBXGroupに、varientGroupをappendする
+         ・PBXBuildFileを作成
+           ・PBXBuildFileは、PBXVarientGroupをfileRefとして設定する
+         */
+        
+        /*
          やること
          1. localized file の実態を作成（PBXBuildFile）
          2. PBXVarientGroupの作成
@@ -668,22 +680,22 @@ class SourceGenerator {
         // 対象のローカライズディレクトリの確認
         /*
          Base.lproj
-         - Akerun.strings(1)
+         - Fuga.strings(1)
           -> enとjaの探索始める
           -> 見つけたFile全てを作成して、そのファイルをもとにPBXVarientGroup作成
           -> PBXVarientGroupからPBXSourceBuildPhaseに紐付けるPBXBuildFileを作成する
           -> それをBuildPhaseに追加
-         - Akerun2.strings(2) -> enとjaの探索始める
-         - Akerun3.strings(3) -> enとjaの探索始める
+         - Fuga2.strings(2) -> enとjaの探索始める
+         - Fuga3.strings(3) -> enとjaの探索始める
          
          en.lproj
-         - Akerun.strings (4) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
-         - Akerun2.strings (5) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
-         - Akerun3.strings (4) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
+         - Fuga.strings (4) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
+         - Fuga2.strings (5) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
+         - Fuga3.strings (4) -> enとjaの探索始めて、既に作成したBuildFileないか(knowFileTypeがtext.plist.stringsで、名前が同じもの)確認
          ja.lproj
-         - Akerun.strings
-         - Akerun2.strings
-         - Akerun3.strings
+         - Fuga.strings
+         - Fuga2.strings
+         - Fuga3.strings
          
          ==
          
@@ -865,7 +877,7 @@ class SourceGenerator {
                      base.lprojにないものだと、
                      とりあえず、ソースファイルを作成して、groupChildrenに突っ込んでおこう
                      というロジックになっている。
-                     なので、AkerunDoorListLocalizable.stringsが、base.lprojに格納されていないので
+                     なので、FugaDoorListLocalizable.stringsが、base.lprojに格納されていないので
                      結果ここのロジックを通る感じになっている。
                      */
                     let sourceFile = generateSourceFile(targetType: targetType,
@@ -898,13 +910,13 @@ class SourceGenerator {
          0番目が受け取ったpathに等しいgroup
          
          例えば下記のようなFugaまでのpathを取った場合、
-         /Akerun/Test/Hoge/Fuga
+         /Fuga/Test/Hoge/Fuga
          
          Fugaがすぐ上のgroupにあたるもので、
          Fuga以下の下記のようなgroupは
-         /Akerun/Test/Hoge/Fuga/HogeMaru/...
-         /Akerun/Test/Hoge/Fuga/HogeMaru2/...
-         /Akerun/Test/Hoge/Fuga/HogeMaru3/...
+         /Fuga/Test/Hoge/Fuga/HogeMaru/...
+         /Fuga/Test/Hoge/Fuga/HogeMaru2/...
+         /Fuga/Test/Hoge/Fuga/HogeMaru3/...
          
          もう少し上の方にある下記の処理がそれに相当すると思われる。
          for path in directories {

@@ -223,6 +223,17 @@ public class PBXProjGenerator {
             pbxProject.projects = subprojects
         }
 
+        // これよりも前に、varientGroupを全て作成し、そのvarientGroup内のreferenceも作成しておく
+        /*
+         探索のイメージ
+         すべてのDirectoryのうち、en.lprojなどの"lprojを含むものを探す"
+         
+         
+          pbxVarientGroup = pbxvarientGroupGenerator.generateAll()
+         */
+        let test = PBXVarientGroupGenerator(pbxProj: pbxProj, project: project)
+        let hoge = test.generate()
+        
         try project.targets.forEach(generateTarget)
         try project.aggregateTargets.forEach(generateAggregateTarget)
 
@@ -656,16 +667,18 @@ public class PBXProjGenerator {
         let sourceFileBuildPhaseOverrideSequence: [(Path, BuildPhaseSpec)] = Set(infoPlistFiles.values).map({ (project.basePath + $0, .none) })
         let sourceFileBuildPhaseOverrides = Dictionary(uniqueKeysWithValues: sourceFileBuildPhaseOverrideSequence)
         // ここ
-        let sourceFiles = try sourceGenerator.getAllSourceFiles(targetType: target.type, sources: target.sources, buildPhases: sourceFileBuildPhaseOverrides)
+        
+        /*
+         let sourceFiles = try sourceGenerator.getAllSourceFiles(targetType: target.type,
+                                                                 sources: target.sources,
+                                                                 buildPhases: sourceFileBuildPhaseOverrides,
+                                                                 varientGroupList: self.varientGroupList)
+         */
+        let sourceFiles = try sourceGenerator.getAllSourceFiles(targetType: target.type,
+                                                                sources: target.sources,
+                                                                buildPhases: sourceFileBuildPhaseOverrides)
             .sorted { $0.path.lastComponent < $1.path.lastComponent }
         
-        if target.name == "Akerun" {
-//            Term.stdout.print("@@@ target.name :: \(target.name)")
-//            print("@@@ hoge :: \(sourceFiles.filter { $0.buildFile.file?.name == "AkerunDoorListLocalizable.strings" }.count)")
-        }
-        
-//        Term.stdout.print("@@@ sourceFiles.count :: \(sourceFiles.count)")
-
         var anyDependencyRequiresObjCLinking = false
 
         var dependencies: [PBXTargetDependency] = []
@@ -1106,11 +1119,6 @@ public class PBXProjGenerator {
             let resourcesBuildPhase = addObject(PBXResourcesBuildPhase(files: resourcesBuildPhaseFiles))
             buildPhases.append(resourcesBuildPhase)
             
-            //
-            
-            if target.name == "Akerun" {
-//                print("@@@ hogehoge \(resourcesBuildPhaseFiles.filter { $0.file?.name == "AkerunDoorListLocalizable.strings" }.count )")
-            }
         }
 
         let swiftObjCInterfaceHeader = project.getCombinedBuildSetting("SWIFT_OBJC_INTERFACE_HEADER_NAME", target: target, config: project.configs[0]) as? String
@@ -1405,10 +1413,6 @@ public class PBXProjGenerator {
         if !target.isLegacy {
             targetObject.productType = target.type
         }
-        
-//        if target.name == "Akerun" {
-//            print("@@@ hoge2 :: \(sourceFiles.filter { $0.buildFile.file?.name == "AkerunDoorListLocalizable.strings" }.count)")
-//        }
     }
     
     private func makePlatformFilter(for filter: Dependency.PlatformFilter) -> String? {
