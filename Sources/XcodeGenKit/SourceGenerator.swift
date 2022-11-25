@@ -207,11 +207,16 @@ class SourceGenerator {
         return fileReference
     }
 
-    func getFileReference(path: Path, inPath: Path, name: String? = nil, sourceTree: PBXSourceTree = .group, lastKnownFileType: String? = nil) -> PBXFileElement {
+    func getFileReference(path: Path,
+                          inPath: Path,
+                          name: String? = nil,
+                          sourceTree: PBXSourceTree = .group,
+                          lastKnownFileType: String? = nil) -> PBXFileElement {
         let fileReferenceKey = path.string.lowercased()
         if let fileReference = fileReferencesByPath[fileReferenceKey] {
             return fileReference
         } else {
+            
             let fileReferencePath = (try? path.relativePath(from: inPath)) ?? path
             var fileReferenceName: String? = name ?? fileReferencePath.lastComponent
             if fileReferencePath.string == fileReferenceName {
@@ -255,6 +260,15 @@ class SourceGenerator {
                 return versionGroup
             } else {
                 // For all extensions other than `xcdatamodeld`
+                
+                if fileReferencePath.path.contains(".lproj") {
+//                    Term.stdout.print("@@@ path1: \(path.path)")
+//                    Term.stdout.print("@@@ inPath.path: \(inPath.path)")
+//                    
+//                    Term.stdout.print("@@@ path2: \(fileReferencePath.string)")
+//                    Term.stdout.print("@@@ fileReferenceName: \(fileReferenceName)")
+                }
+                
                 let fileReference = addObject(
                     PBXFileReference(
                         sourceTree: sourceTree,
@@ -732,10 +746,13 @@ class SourceGenerator {
                         }
                         
                         let fileReference = getFileReference(
-                            path: localizedDirChildPath,
-                            inPath: path,
-                            name: localizedDir.lastComponentWithoutExtension
+                            path: localizedDirChildPath, // "/Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj"
+                            inPath: path, // "/Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files"
+                            name: localizedDir.lastComponentWithoutExtension // "ja, Base, en とか"
                         )
+                        
+//                        Term.stdout.print("@@@ localizedDir.path :: \(localizedDir.path)")
+//                        Term.stdout.print("@@@ path.path :: \(path.path)")
                         
                         variantGroup.children.append(fileReference)
                     

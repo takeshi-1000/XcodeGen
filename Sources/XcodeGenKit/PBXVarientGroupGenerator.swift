@@ -33,6 +33,8 @@ class PBXVarientGroupGenerator {
                 let path = project.basePath + targetSource.path
 //                Term.stdout.print("@@@ path :: \(path)")
                 
+                // include, excludeを考慮し
+                
                 do {
                     generateVarientGroup(path: path)
                 } catch {
@@ -51,25 +53,57 @@ class PBXVarientGroupGenerator {
             
             if path.exists && path.isDirectory  {
                 do {
+                    // path.children() ここのchilrenでincludeとexcludeを指定したほうが良さそう
+                    
+                    
+                    
                     let localizeDirs: [Path] = try path.children().filter ({ $0.extension == "lproj" })
                     if localizeDirs.count > 0 {
-                        Term.stdout.print("@ lproj dir roo path :: \(path.path)")
+//                        Term.stdout.print("@ lproj dir roo path :: \(path.path)")
                         
-                        try localizeDirs.forEach { hoge in
-                            Term.stdout.print("@@ lproj dir path :: \(hoge.path)")
+                        try localizeDirs.forEach { localizedDir in
+//                            Term.stdout.print("@@ lproj dir path :: \(hoge.path)")
+//                            Term.stdout.print("@@@ hoge.path :: \(hoge.path)")
                             
-                            try hoge.children().forEach { path in
+                            try localizedDir.children().forEach { localizedDirChildPath in
                                 // PBXFileRefを作成
-                                Term.stdout.print("@@@ file path :: \(path.path)")
+//                                Term.stdout.print("@@@ file path :: \(path.path)")
                                 // PBXVarientGroupを作成(orキャッシュから取得)
-                                let fileRef = PBXFileReference.init()
+                                // sourceGeneratorの getFileReference(path: Path,.. 内のPBXFileReferenceを参考にする
+                                let fileReferencePath = try localizedDirChildPath.relativePath(from: path)
+                                let fileRef = PBXFileReference(
+                                    sourceTree: .group,
+                                    name: fileReferencePath.lastComponent,
+                                    lastKnownFileType: Xcode.fileType(path: path),
+                                    path: fileReferencePath.string // let fileReferencePath = (try? path.relativePath(from: inPath)) ?? path, path:
+                                )
                                 
-                                if let vg = varientGroupList.first(where: { $0.name?.contains(path.lastComponentWithoutExtension) ?? false }) {
+//                                pbxProj.add(object: fileRef)
+                                
+                                Term.stdout.print("@@@ localizedDirChildPath :: \(localizedDirChildPath.path)")
+//                                Term.stdout.print("@@@ na,e :: \(fileReferencePath.lastComponent)")
+                                
+                                // 名前はBaseを参照する。
+
+                                if let vg = varientGroupList.first(where: { ($0.name == localizedDirChildPath.lastComponent) }) {
+                                    
+//                                    if localizedDirChildPath.lastComponentWithoutExtension == "Base" {
+//                                        vg.name = path.lastComponent
+//                                    }
+                                    
                                     vg.children.append(fileRef)
                                 } else {
                                     // fileRefをchildrenに追加(キャッシュから取得しようが、しまいが)
-                                    let varientGroup = PBXVariantGroup()
+                                    // SourceGenerator内のgetVariantGroup(path: Path)を参考にPBXVarientGroupの生成処理を実装
+                                    // そこまで複雑なことはやってなさそう
+                                    // addObject忘れない
+                                    let varientGroup = PBXVariantGroup(
+                                        sourceTree: .group,
+                                        name: localizedDirChildPath.lastComponent
+                                    )
                                     varientGroup.children.append(fileRef)
+                                    
+//                                    pbxProj.add(object: varientGroup)
                                     
                                     varientGroupList.append(varientGroup)
                                 }
@@ -92,8 +126,12 @@ class PBXVarientGroupGenerator {
             }
         }
         
+        varientGroupList.forEach {
+            Term.stdout.print("@@@ test :: \($0.name)")
+        }
+
+        Term.stdout.print("@@@ varientGroupList.count -> \(varientGroupList.count)")
+        
         return varientGroupList
     }
-    
-    
 }
