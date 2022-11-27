@@ -96,8 +96,11 @@ class SourceGenerator {
     ///   - buildPhases: A dictionary containing any build phases that should be applied to source files at specific paths in the event that the associated `TargetSource` didn't already define a `buildPhase`. Values from this dictionary are used in cases where the project generator knows more about a file than the spec/filesystem does (i.e if the file should be treated as the targets Info.plist and so on).
     ///
     // ここにvarientGroup, ~~fileReference~~ の全量を追加
-    func getAllSourceFiles(targetType: PBXProductType, sources: [TargetSource], buildPhases: [Path : BuildPhaseSpec]) throws -> [SourceFile] {
-        
+    func getAllSourceFiles(targetType: PBXProductType,
+                           sources: [TargetSource],
+                           buildPhases: [Path : BuildPhaseSpec],
+                           variantList: [PBXVariantGroup]) throws -> [SourceFile] {
+        tmpVariantGroups = variantList
         return try sources.flatMap { try getSourceFiles(targetType: targetType, targetSource: $0, buildPhases: buildPhases) }
     }
 
@@ -745,6 +748,7 @@ class SourceGenerator {
                             groupChildren.append(variantGroup)
                         }
                         
+                        /*
                         let fileReference = getFileReference(
                             path: localizedDirChildPath, // "/Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj"
                             inPath: path, // "/Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files"
@@ -755,6 +759,7 @@ class SourceGenerator {
 //                        Term.stdout.print("@@@ path.path :: \(path.path)")
                         
                         variantGroup.children.append(fileReference)
+                         */
                     
                         // sourceFileはPBXBuildFileのことで、resource / source / .. など種類がある。
                         if allSourceFiles.filter({ $0.buildFile.file?.name == localizedDirChildPath.lastComponent }).first == nil {
@@ -956,7 +961,9 @@ class SourceGenerator {
     }
 
     /// creates source files
-    private func getSourceFiles(targetType: PBXProductType, targetSource: TargetSource, buildPhases: [Path: BuildPhaseSpec]) throws -> [SourceFile] {
+    private func getSourceFiles(targetType: PBXProductType,
+                                targetSource: TargetSource,
+                                buildPhases: [Path: BuildPhaseSpec]) throws -> [SourceFile] {
 
         // generate excluded paths
         let path = project.basePath + targetSource.path
@@ -1052,24 +1059,18 @@ class SourceGenerator {
 //            tmpVariantGroups.forEach { test in
 //                Term.stdout.print("@@@ varient :: \(test.name)")
 //            }
-//
-            if let test = tmpVariantGroups.filter({ $0.name!.contains(path.lastComponentWithoutExtension) }).first {
-                
-//                Term.stdout.print("@@@ test varient name :: \(test.name)")
-                
-                let sourceFile = generateSourceFile(targetType: targetType,
-                                                    targetSource: targetSource,
-                                                    path: path,
-                                                    fileReference: test,
-                                                    buildPhases: buildPhases)
-                sourceFiles.append(sourceFile)
-                sourceReference = getFileReference(path: path,
-                                                   inPath: path,
-                                                   name: targetSource.name)
-            } else {
-                // varientGroupが存在しない場合
-                sourceReference = .init()
-            }
+            //
+            let test = tmpVariantGroups.filter({ $0.name!.contains(path.lastComponentWithoutExtension) }).first
+                        
+            let sourceFile = generateSourceFile(targetType: targetType,
+                                                targetSource: targetSource,
+                                                path: path,
+                                                fileReference: test,
+                                                buildPhases: buildPhases)
+            sourceFiles.append(sourceFile)
+            sourceReference = getFileReference(path: path,
+                                               inPath: path,
+                                               name: targetSource.name)
         }
 
         if hasCustomParent {

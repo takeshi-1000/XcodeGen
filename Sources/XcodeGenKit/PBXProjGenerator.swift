@@ -234,7 +234,10 @@ public class PBXProjGenerator {
         let test = PBXVarientGroupGenerator(pbxProj: pbxProj, project: project)
         let hoge = test.generate()
         
-        try project.targets.forEach(generateTarget)
+//        try project.targets.forEach(generateTarget)
+        try project.targets.forEach({ target in
+            try generateTarget(target, variantGroupList: hoge)
+        })
         try project.aggregateTargets.forEach(generateAggregateTarget)
 
         if !carthageFrameworksByPlatform.isEmpty {
@@ -660,7 +663,7 @@ public class PBXProjGenerator {
         return pbxproj
     }
 
-    func generateTarget(_ target: Target) throws {
+    func generateTarget(_ target: Target, variantGroupList: [PBXVariantGroup]) throws {
         let carthageDependencies = carthageResolver.dependencies(for: target)
 
         let infoPlistFiles: [Config: String] = getInfoPlists(for: target)
@@ -676,7 +679,8 @@ public class PBXProjGenerator {
          */
         let sourceFiles = try sourceGenerator.getAllSourceFiles(targetType: target.type,
                                                                 sources: target.sources,
-                                                                buildPhases: sourceFileBuildPhaseOverrides)
+                                                                buildPhases: sourceFileBuildPhaseOverrides,
+                                                                variantList: variantGroupList)
             .sorted { $0.path.lastComponent < $1.path.lastComponent }
         
         var anyDependencyRequiresObjCLinking = false
