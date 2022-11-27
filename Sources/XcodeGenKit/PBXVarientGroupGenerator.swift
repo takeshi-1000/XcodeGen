@@ -20,25 +20,14 @@ class PBXVarientGroupGenerator {
         self.project = project
     }
     
-    func generate() -> [PBXVariantGroup] {
-        //
-        /*
-         pathを格納しておき、
-         同じディレクトリ配下にあるlocalizeディレクトリを抽出する。
-         （PBXFileRefを、該当するPBXVariantGroupに追加するのに伴って）
-         
-         */
+    func generate() -> [Path: PBXVariantGroup] {
+        
         var tmpVarientGroupList: [Path: PBXVariantGroup] = [:]
-        var varientGroupList: [PBXVariantGroup] = []
         
         // pathを受け取る
         project.targets.forEach { target in
             target.sources.forEach { targetSource in
-//                let path = project.basePath + targetSource.path
                 let path = project.basePath + targetSource.path
-//                Term.stdout.print("@@@ path :: \(path)")
-                
-                // include, excludeを考慮し
                 
                 do {
                     generateVarientGroup(path: path)
@@ -49,18 +38,10 @@ class PBXVarientGroupGenerator {
             }
         }
         
-        // そのpathからPBXFileRefを作成
-        // そのFileRefをchildrenにもったPBXVarientGroupを作成
-        
-        // addobject
-        
         func generateVarientGroup(path: Path) {
             
             if path.exists && path.isDirectory  {
                 do {
-                    // path.children() ここのchilrenでincludeとexcludeを指定したほうが良さそう
-                    
-                    
                     
                     let localizeDirs: [Path] = try path.children()
                         .filter ({ $0.extension == "lproj" })
@@ -107,74 +88,20 @@ class PBXVarientGroupGenerator {
                                     tmpVarientGroupList[localizedDirChildPath] = varientGroup
                                     
                                     pbxProj.add(object: varientGroup)
-                                    
-                                    varientGroupList.append(varientGroup)
                                 }
                             }
                         }
                     }
                     
-    //                Term.stdout.print("\n")
                     try path.children().forEach { path in
                         generateVarientGroup(path: path)
                     }
-//                    try path.children().forEach(generateVarientGroup(path:includes:excludes:))
                 } catch {
-                    Term.stdout.print("@@@ 通過する????")
-    //                if path.path.contains("lproj") {
-    //                    Term.stdout.print("@@@ test1 :: \(path.path)")
-    //                }
-                }
-            } else {
-                if path.path.contains("lproj") {
-                    Term.stdout.print("@@@ test2 :: \(path.path)")
+
                 }
             }
         }
         
-        
-        
-//        varientGroupList.forEach {
-//            Term.stdout.print("@@@ test :: \($0.name)")
-//        }
-        
-        /*
-         (1)/Users/takeshikomori/me/iOS/akerun-ios/AkerunWidget/ja.lproj/AkerunWidget.strings を受け取る
-         ・AkerunWidget.stringsのvariantGroupを作成
-         
-         
-         (2)/Users/takeshikomori/me/iOS/akerun-ios/AkerunWidget/Base.lproj/AkerunWidget.intentdefinition を受け取る
-         ・/Users/takeshikomori/me/iOS/akerun-ios/AkerunWidget/"ja".lproj のようなpathをfilterする。
-         ・そこでfilterされたlastComponentWithoutExtensionで生成された名前のものがあればchildrenにappend
-         ・chilren append時に Base or deploymentLanguageであればそれによせる。
-         
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/en.lproj/Main.strings, Optional("Main.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/ja.lproj/ja.Main.strings, Optional("ja.Main.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/AkerunWidget/ja.lproj/AkerunWidget.strings, Optional("AkerunWidget.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/TodayExtension/Base.lproj/MainInterface.storyboard, Optional("MainInterface.storyboard")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/AkerunWidget/Base.lproj/AkerunWidget.intentdefinition, Optional("AkerunWidget.intentdefinition")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj/AkerunLocalizable.strings, Optional("AkerunLocalizable.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj/Localizable.strings, Optional("Localizable.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj/InfoPlist.strings, Optional("InfoPlist.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj/AkerunDoorListLocalizable.strings, Optional("AkerunDoorListLocalizable.strings")
-         
-         
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/AkerunWidget/ja.lproj/AkerunWidget.strings, Optional("AkerunWidget.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj/InfoPlist.strings, Optional("InfoPlist.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/AkerunWidget/Base.lproj/AkerunWidget.intentdefinition, Optional("AkerunWidget.intentdefinition")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/ja.lproj/ja.Main.strings, Optional("ja.Main.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/TodayExtension/Base.lproj/MainInterface.storyboard, Optional("MainInterface.storyboard")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/en.lproj/Main.strings, Optional("Main.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj/Localizable.strings, Optional("Localizable.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj/AkerunLocalizable.strings, Optional("AkerunLocalizable.strings")
-         @@@ test :: /Users/takeshikomori/me/iOS/akerun-ios/Akerun/Supporting Files/ja.lproj/AkerunDoorListLocalizable.strings, Optional("AkerunDoorListLocalizable.strings")
-         */
-        tmpVarientGroupList.forEach { test in
-            Term.stdout.print("@@@ test :: \(test.key.path), \(test.value.name)")
-        }
-
-        Term.stdout.print("@@@ varientGroupList.count -> \(varientGroupList.count)")
-        
-        return tmpVarientGroupList.map { $0.value }
+        return tmpVarientGroupList
     }
 }

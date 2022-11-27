@@ -663,7 +663,7 @@ public class PBXProjGenerator {
         return pbxproj
     }
 
-    func generateTarget(_ target: Target, variantGroupList: [PBXVariantGroup]) throws {
+    func generateTarget(_ target: Target, variantGroupList: [Path: PBXVariantGroup]) throws {
         let carthageDependencies = carthageResolver.dependencies(for: target)
 
         let infoPlistFiles: [Config: String] = getInfoPlists(for: target)

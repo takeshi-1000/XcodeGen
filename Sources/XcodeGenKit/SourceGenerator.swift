@@ -18,7 +18,7 @@ class SourceGenerator {
     private let projectDirectory: Path?
     private var fileReferencesByPath: [String: PBXFileElement] = [:]
     private var groupsByPath: [Path: PBXGroup] = [:]
-    private var tmpVariantGroups: [PBXVariantGroup] = []
+    private var tmpVariantGroups: [Path: PBXVariantGroup] = [:]
     private var localPackageGroup: PBXGroup?
 
     private let project: Project
@@ -99,7 +99,7 @@ class SourceGenerator {
     func getAllSourceFiles(targetType: PBXProductType,
                            sources: [TargetSource],
                            buildPhases: [Path : BuildPhaseSpec],
-                           variantList: [PBXVariantGroup]) throws -> [SourceFile] {
+                           variantList: [Path: PBXVariantGroup]) throws -> [SourceFile] {
         tmpVariantGroups = variantList
         return try sources.flatMap { try getSourceFiles(targetType: targetType, targetSource: $0, buildPhases: buildPhases) }
     }
@@ -363,7 +363,7 @@ class SourceGenerator {
     // TODO: nameに変えたい
     private func getVariantGroup(path: Path) -> PBXVariantGroup {
         let variantGroup: PBXVariantGroup
-        if let cachedGroup = tmpVariantGroups.first(where: { $0.name!.split(separator: ".").first! == path.lastComponentWithoutExtension }) {
+        if let cachedGroup = tmpVariantGroups.first(where: { $0.key.lastComponentWithoutExtension == path.lastComponentWithoutExtension })?.value {
             if NSString(string: path.components.last ?? "").pathExtension != "strings" {
 //                print("@@@ test :: \(path.components.last)")
                 cachedGroup.name = path.components.last
@@ -379,7 +379,7 @@ class SourceGenerator {
             )
             // pbxVarientGroupGeneratorに必要
             variantGroup = addObject(group)
-            tmpVariantGroups.append(variantGroup)
+            tmpVariantGroups[path] = variantGroup
 //            tmpVariantGroups.append(group)
 //            return group
         }
@@ -1060,8 +1060,7 @@ class SourceGenerator {
 //                Term.stdout.print("@@@ varient :: \(test.name)")
 //            }
             //
-            let test = tmpVariantGroups.filter({ $0.name!.contains(path.lastComponentWithoutExtension) }).first
-                        
+            let test = tmpVariantGroups.first { $0.key.lastComponentWithoutExtension == path.lastComponentWithoutExtension }?.value
             let sourceFile = generateSourceFile(targetType: targetType,
                                                 targetSource: targetSource,
                                                 path: path,
