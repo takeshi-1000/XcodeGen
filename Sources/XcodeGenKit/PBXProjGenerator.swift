@@ -683,6 +683,12 @@ public class PBXProjGenerator {
                                                                 variantList: variantGroupList)
             .sorted { $0.path.lastComponent < $1.path.lastComponent }
         
+        let hoge2 = sourceFiles.filter { $0.fileReference.name == "Localizable.strings" }
+        if hoge2.count > 0 {
+            Term.stdout.print("@@@ targetName :: \(target.name)")
+            Term.stdout.print("@@@ count :: \(hoge2.count)")
+        }
+        
         var anyDependencyRequiresObjCLinking = false
 
         var dependencies: [PBXTargetDependency] = []
@@ -1123,6 +1129,11 @@ public class PBXProjGenerator {
             let resourcesBuildPhase = addObject(PBXResourcesBuildPhase(files: resourcesBuildPhaseFiles))
             buildPhases.append(resourcesBuildPhase)
             
+//            resourcesBuildPhaseFiles.filter { $0.file.na }
+            let hoge3 = resourcesBuildPhaseFiles.filter { $0.file?.name == "Localizable.strings" }
+            if hoge3.count > 0 {
+                Term.stdout.print("@@@ count2 :: \(hoge3.count)")
+            }
         }
 
         let swiftObjCInterfaceHeader = project.getCombinedBuildSetting("SWIFT_OBJC_INTERFACE_HEADER_NAME", target: target, config: project.configs[0]) as? String

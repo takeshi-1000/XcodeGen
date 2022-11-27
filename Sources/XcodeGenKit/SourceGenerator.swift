@@ -1066,6 +1066,9 @@ class SourceGenerator {
                                                 path: path,
                                                 fileReference: test,
                                                 buildPhases: buildPhases)
+            
+//            print("@@@ sourceFile :: \(sourceFile.fileReference.name)")
+            
             sourceFiles.append(sourceFile)
             sourceReference = getFileReference(path: path,
                                                inPath: path,
@@ -1086,7 +1089,7 @@ class SourceGenerator {
     ///
     /// While `TargetSource` declares `type`, its optional and in the event that the value is not defined then we must resolve a sensible default based on the path of the source.
     private func resolvedTargetSourceType(for targetSource: TargetSource, at path: Path) -> SourceType {
-        if targetSource.localizedGroup || targetSource.path.contains("lproj") {
+        if targetSource.path.contains("lproj") {
             return .varientGroup
         } else {
             return targetSource.type ?? (path.isFile || path.extension != nil ? .file : .group)
