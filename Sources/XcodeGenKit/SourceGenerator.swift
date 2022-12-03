@@ -537,18 +537,7 @@ class SourceGenerator: TargetSourceFilterable {
             
         case .variantGroup:
             let variantGroup: PBXVariantGroup? = pbxVariantGroupInfoList
-                .first {
-                    let existsAlwaysStoredBaseFile = PBXVariantGroup.alwaysStoredBaseExtensions()
-                        .reduce(into: [Bool]()) { $0.append(path.lastComponent.contains($1)) }
-                        .filter { $0 }
-                        .count > 0
-                    
-                    if existsAlwaysStoredBaseFile {
-                        return $0.path.lastComponentWithoutExtension == path.lastComponentWithoutExtension
-                    } else {
-                        return $0.path.lastComponent == path.lastComponent
-                    }}?
-                .variantGroup
+                .first { $0.path == path }?.variantGroup
             
             let sourceFile = generateSourceFile(targetType: targetType,
                                                 targetSource: targetSource,

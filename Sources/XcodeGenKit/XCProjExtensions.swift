@@ -17,12 +17,6 @@ extension PBXFileElement {
     }
 }
 
-extension PBXVariantGroup {
-    static func alwaysStoredBaseExtensions() -> [String] {
-        [".storyboard", ".intentdefinition"]
-    }
-}
-
 extension PBXProj {
 
     public func printGroups() -> String {

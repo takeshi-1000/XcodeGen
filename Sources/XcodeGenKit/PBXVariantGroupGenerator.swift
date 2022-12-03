@@ -24,6 +24,10 @@ class PBXVariantGroupGenerator: TargetSourceFilterable {
         self.project = project
     }
     
+    var alwaysStoredBaseExtensions: [String] {
+        [".storyboard", ".intentdefinition"]
+    }
+    
     func generate() throws -> [PBXVariantGroupInfo] {
         var variantGroupInfoList: [PBXVariantGroupInfo] = []
         
@@ -109,7 +113,7 @@ class PBXVariantGroupGenerator: TargetSourceFilterable {
             let pbxVariantGroupInfo = variantGroupInfoList
                 .filter { $0.targetName == targetName }
                 .first {
-                    let existsAlwaysStoredBaseFile = PBXVariantGroup.alwaysStoredBaseExtensions()
+                    let existsAlwaysStoredBaseFile = alwaysStoredBaseExtensions
                         .reduce(into: [Bool]()) { $0.append(localizedChildPath.lastComponent.contains($1)) }
                         .filter { $0 }
                         .count > 0
