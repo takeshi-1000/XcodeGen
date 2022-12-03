@@ -3,7 +3,6 @@ import PathKit
 import ProjectSpec
 import XcodeProj
 import XcodeGenCore
-import SwiftCLI
 
 struct SourceFile {
     let path: Path
@@ -12,7 +11,7 @@ struct SourceFile {
     let buildPhase: BuildPhaseSpec?
 }
 
-class SourceGenerator: Hoge {
+class SourceGenerator: TargetSourceFilterable {
 
     var rootGroups: Set<PBXFileElement> = []
     private let projectDirectory: Path?
@@ -23,13 +22,6 @@ class SourceGenerator: Hoge {
 
     let project: Project
     let pbxProj: PBXProj
-
-    var defaultExcludedFiles = [
-        ".DS_Store",
-    ]
-    let defaultExcludedExtensions = [
-        "orig",
-    ]
 
     private(set) var knownRegions: Set<String> = []
 
@@ -546,11 +538,17 @@ class SourceGenerator: Hoge {
         case .variantGroup:
             let variantGroup: PBXVariantGroup? = pbxVariantGroupInfoList
                 .first {
-                    if path.lastComponent.contains(".intentdefinition") || path.lastComponent.contains(".storyboard") {
+                    let existsAlwaysStoredBaseFile = PBXVariantGroup.alwaysStoredBaseExtensions()
+                        .reduce(into: [Bool]()) { $0.append(path.lastComponent.contains($1)) }
+                        .filter { $0 }
+                        .count > 0
+                    
+                    if existsAlwaysStoredBaseFile {
                         return $0.path.lastComponentWithoutExtension == path.lastComponentWithoutExtension
                     } else {
                         return $0.path.lastComponent == path.lastComponent
-                    }}?.variantGroup
+                    }}?
+                .variantGroup
             
             let sourceFile = generateSourceFile(targetType: targetType,
                                                 targetSource: targetSource,

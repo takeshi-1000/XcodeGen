@@ -332,8 +332,6 @@ extension Target: NamedJSONDictionaryConvertible {
     }
 }
 
-import SwiftCLI
-
 extension Target: JSONEncodable {
     public func toJSONValue() -> Any {
         var dict: [String: Any?] = [

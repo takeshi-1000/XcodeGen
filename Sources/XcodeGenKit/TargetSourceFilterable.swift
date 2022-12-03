@@ -1,23 +1,23 @@
-//
-//  Hoge.swift
-//  XcodeGenKit
-//
-//  Created by Takeshi Komori on 2022/12/02.
-//
-
 import XcodeProj
 import ProjectSpec
 import PathKit
 import XcodeGenCore
 
-protocol Hoge {
+protocol TargetSourceFilterable {
     var project: Project { get }
-    var defaultExcludedFiles: [String] { get set }
+    var defaultExcludedFiles: [String] { get }
     var defaultExcludedExtensions: [String] { get }
 }
 
-extension Hoge {
+extension TargetSourceFilterable {
     
+    var defaultExcludedFiles: [String] {
+        [".DS_Store"]
+    }
+    
+    var defaultExcludedExtensions: [String] {
+        ["orig"]
+    }
     
     /// Gets all the children paths that aren't excluded
     func getSourceChildren(targetSource: TargetSource, dirPath: Path, excludePaths: Set<Path>, includePaths: SortedArray<Path>) throws -> [Path] {

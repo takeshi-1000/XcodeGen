@@ -15,16 +15,9 @@ class PBXVariantGroupInfo {
     }
 }
 
-class PBXVariantGroupGenerator: Hoge {
+class PBXVariantGroupGenerator: TargetSourceFilterable {
     let pbxProj: PBXProj
     let project: Project
-    
-    var defaultExcludedFiles = [
-        ".DS_Store",
-    ]
-    let defaultExcludedExtensions = [
-        "orig",
-    ]
     
     init(pbxProj: PBXProj, project: Project) {
         self.pbxProj = pbxProj
@@ -116,7 +109,12 @@ class PBXVariantGroupGenerator: Hoge {
             let pbxVariantGroupInfo = variantGroupInfoList
                 .filter { $0.targetName == targetName }
                 .first {
-                    if localizedChildPath.lastComponent.contains(".intentdefinition") || localizedChildPath.lastComponent.contains(".storyboard") {
+                    let existsAlwaysStoredBaseFile = PBXVariantGroup.alwaysStoredBaseExtensions()
+                        .reduce(into: [Bool]()) { $0.append(localizedChildPath.lastComponent.contains($1)) }
+                        .filter { $0 }
+                        .count > 0
+                    
+                    if existsAlwaysStoredBaseFile {
                         return $0.path.lastComponentWithoutExtension == localizedChildPath.lastComponentWithoutExtension
                     } else {
                         return $0.path.lastComponent == localizedChildPath.lastComponent
