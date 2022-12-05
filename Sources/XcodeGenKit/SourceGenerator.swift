@@ -415,7 +415,7 @@ class SourceGenerator: TargetSourceFilterable {
                 
                 guard let variantGroupInfo = pbxVariantGroupInfoList
                     .filter({ $0.targetName == targetName })
-                    .first(where: { $0.path.path == localizedDirChildPath.path }) else {
+                    .first(where: { $0.path == localizedDirChildPath }) else {
                     break
                 }
                 groupChildren.append(variantGroupInfo.variantGroup)
