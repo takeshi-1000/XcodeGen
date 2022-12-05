@@ -143,19 +143,32 @@ class SourceGeneratorTests: XCTestCase {
                 let directories = """
                 Sources:
                     Base.lproj:
+                        - LocalizedXib.xib
                         - LocalizedStoryboard.storyboard
-                        - BaseLocalizable.strings
                         - IntentDefinition.intentdefinition
+                        - BaseLocalizable.strings
+                        - BaseLocalizedPlist.plist
+                        - BaseLocalizedEntitlements.entitlements
                     en.lproj:
-                        - Localizable.strings
+                        - LocalizedXib.strings
                         - LocalizedStoryboard.strings
-                        - BaseLocalizable.strings
                         - IntentDefinition.strings
+                        - BaseLocalizable.strings
+                        - BaseLocalizedPlist.plist
+                        - BaseLocalizedEntitlements.entitlements
+                        - Localizable.strings
+                        - LocalizedPlist.plist
+                        - LocalizedEntitlements.entitlements
                     ja.lproj:
-                        - Localizable.strings
+                        - LocalizedXib.strings
                         - LocalizedStoryboard.strings
-                        - BaseLocalizable.strings
                         - IntentDefinition.strings
+                        - BaseLocalizable.strings
+                        - BaseLocalizedPlist.plist
+                        - BaseLocalizedEntitlements.entitlements
+                        - Localizable.strings
+                        - LocalizedPlist.plist
+                        - LocalizedEntitlements.entitlements
                 """
                 try createDirectories(directories)
 
@@ -165,26 +178,52 @@ class SourceGeneratorTests: XCTestCase {
                 let pbxProj = try project.generatePbxProj()
                 
                 let resourceList: [(name: String, basePath: String, localizedResources: [String])] = [
+                    // resouce is stored in base localized directory
+                    (
+                        name: "LocalizedXib.xib",
+                        basePath: "Base.lproj/LocalizedXib.xib",
+                        localizedResources: ["en.lproj/LocalizedXib.strings", "ja.lproj/LocalizedXib.strings"]
+                    ),
                     (
                         name: "LocalizedStoryboard.storyboard",
                         basePath: "Base.lproj/LocalizedStoryboard.storyboard",
                         localizedResources: ["en.lproj/LocalizedStoryboard.strings", "ja.lproj/LocalizedStoryboard.strings"]
                     ),
                     (
-                        name: "Localizable.strings",
-                        basePath: "en.lproj/Localizable.strings",
-                        localizedResources: ["ja.lproj/Localizable.strings"]
+                        name: "IntentDefinition.intentdefinition",
+                        basePath: "Base.lproj/IntentDefinition.intentdefinition",
+                        localizedResources: ["en.lproj/IntentDefinition.strings", "ja.lproj/IntentDefinition.strings"]
                     ),
                     (
                         name: "BaseLocalizable.strings",
                         basePath: "Base.lproj/BaseLocalizable.strings",
                         localizedResources: ["en.lproj/BaseLocalizable.strings", "ja.lproj/BaseLocalizable.strings"]
-                    )
-                    ,
+                    ),
                     (
-                        name: "IntentDefinition.intentdefinition",
-                        basePath: "Base.lproj/IntentDefinition.intentdefinition",
-                        localizedResources: ["en.lproj/IntentDefinition.strings", "ja.lproj/IntentDefinition.strings"]
+                        name: "BaseLocalizedEntitlements.entitlements",
+                        basePath: "Base.lproj/BaseLocalizedEntitlements.entitlements",
+                        localizedResources: ["en.lproj/BaseLocalizedEntitlements.entitlements", "ja.lproj/BaseLocalizedEntitlements.entitlements"]
+                    ),
+                    (
+                        name: "BaseLocalizedPlist.plist",
+                        basePath: "Base.lproj/BaseLocalizedPlist.plist",
+                        localizedResources: ["en.lproj/BaseLocalizedPlist.plist", "ja.lproj/BaseLocalizedPlist.plist"]
+                    ),
+                    // resouce is not stored in base localized directory
+                    (
+                        name: "Localizable.strings",
+                        basePath: "en.lproj/Localizable.strings",
+                        localizedResources: ["ja.lproj/Localizable.strings"]
+                    ),
+                    (
+                        name: "LocalizedPlist.plist",
+                        basePath: "en.lproj/LocalizedPlist.plist",
+                        localizedResources: ["ja.lproj/LocalizedPlist.plist"]
+                    ),
+                    (
+                        name: "LocalizedEntitlements.entitlements",
+                        basePath: "en.lproj/LocalizedEntitlements.entitlements",
+                        localizedResources: ["ja.lproj/LocalizedEntitlements.entitlements"]
                     )
                 ]
                 

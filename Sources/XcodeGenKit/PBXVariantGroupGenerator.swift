@@ -25,7 +25,7 @@ class PBXVariantGroupGenerator: TargetSourceFilterable {
     }
     
     var alwaysStoredBaseExtensions: [String] {
-        [".storyboard", ".intentdefinition"]
+        [".xib", ".storyboard", ".intentdefinition"]
     }
     
     func generate() throws -> [PBXVariantGroupInfo] {
