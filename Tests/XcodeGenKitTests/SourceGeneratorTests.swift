@@ -147,28 +147,18 @@ class SourceGeneratorTests: XCTestCase {
                         - LocalizedStoryboard.storyboard
                         - IntentDefinition.intentdefinition
                         - BaseLocalizable.strings
-                        - BaseLocalizedPlist.plist
-                        - BaseLocalizedEntitlements.entitlements
                     en.lproj:
                         - LocalizedXib.strings
                         - LocalizedStoryboard.strings
                         - IntentDefinition.strings
                         - BaseLocalizable.strings
-                        - BaseLocalizedPlist.plist
-                        - BaseLocalizedEntitlements.entitlements
                         - Localizable.strings
-                        - LocalizedPlist.plist
-                        - LocalizedEntitlements.entitlements
                     ja.lproj:
                         - LocalizedXib.strings
                         - LocalizedStoryboard.strings
                         - IntentDefinition.strings
                         - BaseLocalizable.strings
-                        - BaseLocalizedPlist.plist
-                        - BaseLocalizedEntitlements.entitlements
                         - Localizable.strings
-                        - LocalizedPlist.plist
-                        - LocalizedEntitlements.entitlements
                 """
                 try createDirectories(directories)
 
@@ -199,31 +189,11 @@ class SourceGeneratorTests: XCTestCase {
                         basePath: "Base.lproj/BaseLocalizable.strings",
                         localizedResources: ["en.lproj/BaseLocalizable.strings", "ja.lproj/BaseLocalizable.strings"]
                     ),
-                    (
-                        name: "BaseLocalizedEntitlements.entitlements",
-                        basePath: "Base.lproj/BaseLocalizedEntitlements.entitlements",
-                        localizedResources: ["en.lproj/BaseLocalizedEntitlements.entitlements", "ja.lproj/BaseLocalizedEntitlements.entitlements"]
-                    ),
-                    (
-                        name: "BaseLocalizedPlist.plist",
-                        basePath: "Base.lproj/BaseLocalizedPlist.plist",
-                        localizedResources: ["en.lproj/BaseLocalizedPlist.plist", "ja.lproj/BaseLocalizedPlist.plist"]
-                    ),
                     // resouce is not stored in base localized directory
                     (
                         name: "Localizable.strings",
                         basePath: "en.lproj/Localizable.strings",
                         localizedResources: ["ja.lproj/Localizable.strings"]
-                    ),
-                    (
-                        name: "LocalizedPlist.plist",
-                        basePath: "en.lproj/LocalizedPlist.plist",
-                        localizedResources: ["ja.lproj/LocalizedPlist.plist"]
-                    ),
-                    (
-                        name: "LocalizedEntitlements.entitlements",
-                        basePath: "en.lproj/LocalizedEntitlements.entitlements",
-                        localizedResources: ["ja.lproj/LocalizedEntitlements.entitlements"]
                     )
                 ]
                 
