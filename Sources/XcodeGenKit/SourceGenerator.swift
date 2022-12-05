@@ -546,9 +546,7 @@ class SourceGenerator: TargetSourceFilterable {
                                                 buildPhases: buildPhases)
             
             sourceFiles.append(sourceFile)
-            sourceReference = getFileReference(path: path,
-                                               inPath: path,
-                                               name: targetSource.name)
+            sourceReference = variantGroup!
         }
 
         if hasCustomParent {
